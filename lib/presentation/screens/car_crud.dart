@@ -252,11 +252,9 @@ class _CarFormState extends State<CarForm> {
                 topSpeed: double.parse(_topSpeedController.text),
               );
               if (widget.car == null) {
-                carCubit.createCar(car);
-                widget.carCubit.fetchAllCars();
+                widget.carCubit.createCar(car);
               } else {
-                carCubit.updateCar(car);
-                widget.carCubit.fetchAllCars();
+                widget.carCubit.updateCar(car);
               }
               carCubit.fetchAllCars();
               Navigator.of(context).pop();
