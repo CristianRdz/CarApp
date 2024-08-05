@@ -15,19 +15,25 @@ class CarListView extends StatelessWidget {
       create: (context) => CarCubit(
         carRepository: RepositoryProvider.of<CarRepository>(context),
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Car List'),
-        ),
-        body: const CarListScreen(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) =>  CarForm(),
+      child: BlocListener<CarCubit, CarState>(
+        listener: (context, state) {
+          if (state is CarError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: ${state.message}')),
             );
-          },
-          child: Icon(Icons.add),
+          }
+          if (state is CarSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Success')),
+            );
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Car List'),
+          ),
+          body: const CarListScreen(),
+
         ),
       ),
     );
@@ -51,18 +57,30 @@ class _CarListScreenState extends State<CarListScreen> {
     carCubit.fetchAllCars(); // Cargar la lista de autos automáticamente
   }
 
+  @override
+  void didUpdateWidget(covariant CarListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    carCubit = BlocProvider.of<CarCubit>(context);
+  }
+
 
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: [
-        ElevatedButton(
+      children: <Widget>[
+         FloatingActionButton.extended(
           onPressed: () {
-            carCubit.fetchAllCars();
+            showDialog(
+              context: context,
+              builder: (context) => CarForm(carCubit: carCubit
+              ),
+            );
           },
-          child: const Text('Fetch Cars'),
+          label: const Text('Create Car'),
+          icon: const Icon(Icons.add),
         ),
+
         Expanded(
           child: BlocBuilder<CarCubit, CarState>(
             builder: (context, state) {
@@ -75,8 +93,8 @@ class _CarListScreenState extends State<CarListScreen> {
                   itemBuilder: (context, index) {
                     final car = cars[index];
                     return ListTile(
-                      title: Text(car.mark),
-                      subtitle: Text(car.model),
+                      title: Text('${car.mark} ${car.model}'),
+                      subtitle: Text('Autonomy: ${car.autonomy}, Top Speed: ${car.topSpeed}'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -85,7 +103,7 @@ class _CarListScreenState extends State<CarListScreen> {
                             onPressed: () {
                               showDialog(
                                 context: context,
-                                builder: (context) => CarForm(car: car),
+                                builder: (context) => CarForm(car: car, carCubit: carCubit),
                               );
                             },
                           ),
@@ -137,8 +155,10 @@ class _CarListScreenState extends State<CarListScreen> {
 
 class CarForm extends StatefulWidget {
   final CarModel? car;
+  final CarCubit carCubit;
 
-  CarForm({Key? key, this.car}) : super(key: key);
+
+  CarForm({Key? key, this.car, required this.carCubit}) : super(key: key);
 
   @override
   _CarFormState createState() => _CarFormState();
@@ -163,8 +183,6 @@ class _CarFormState extends State<CarForm> {
   @override
   Widget build(BuildContext context) {
     final carCubit = BlocProvider.of<CarCubit>(context);
-
-
     return AlertDialog(
       title: Text(widget.car == null ? 'Create Car' : 'Update Car'),
       content: Form(
@@ -234,10 +252,13 @@ class _CarFormState extends State<CarForm> {
                 topSpeed: double.parse(_topSpeedController.text),
               );
               if (widget.car == null) {
-                carCubit.createCar(car).then((_) => carCubit.fetchAllCars());
+                carCubit.createCar(car);
+                widget.carCubit.fetchAllCars();
               } else {
-                carCubit.updateCar(car).then((_) => carCubit.fetchAllCars());
+                carCubit.updateCar(car);
+                widget.carCubit.fetchAllCars();
               }
+              carCubit.fetchAllCars();
               Navigator.of(context).pop();
             }
           },
